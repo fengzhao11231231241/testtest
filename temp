@@ -1,0 +1,26 @@
+The 'sth' needs to be a compile-time constant, not just a "const int". In your 1st example, where you define = 10 directly in the declaration of test, the compile knows the exact value of test (10) when it parses char buf[test]; and all is well. But in your 2nd example, where = 10 is moved to the .cpp file, the compiler no longer knows the value of test when it parses char buf[test];, hence the error.
+
+UPDATE: Given new information provided in chat, particularly that ASSERT_EQ() (in gtest.h) calls ::testing::internal::EqHelper::Compare() passing the two input values by const reference, then your issue falls under the same issue described in this answer of Undefined reference to static class member, where a static const can't be passed to a function taking a const reference as input.
+
+Since you are using C++03, you can't use a constexpr to solve your problem. So you will likely need to do something like this instead:
+
+class A{
+    protected :
+        static const uint8_t bufsize = 10; // needed for buf[] below...
+        static const uint8_t test; // needed for ASSERT_EQ() in source.cpp...
+    private:
+        char buf[bufsize];
+}
+#include <source.h>
+
+const uint8_t A::test = A::bufsize;
+
+class Afixture: public ::testing::Test, public A{}
+
+TEST_F(AFixture, test){
+  ASSERT_EQ(10, test)
+}
+
+
+
+https://stackoverflow.com/questions/272900/undefined-reference-to-static-class-member
